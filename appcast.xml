@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Your App Name</title>
+    <link>https://www.yourapp.com</link>
+    <description>Release notes for updates to Your App Name.</description>
+    <language>en</language>
+    <item>
+      <title>Version 1.0</title>
+      <description>
+        <![CDATA[
+          <p>Release notes for version 1.0:</p>
+          <ul>
+            <li>Feature 1</li>
+            <li>Feature 2</li>
+            <!-- Add more features here -->
+          </ul>
+        ]]>
+      </description>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
+      <enclosure url="https://oliver99991.github.io/RW1.github.io/03_18.apk" sparkle:version="1.0" length="123456789" type="application/octet-stream"/>
+    </item>
+    <!-- Add more items for additional versions -->
+  </channel>
+</rss>

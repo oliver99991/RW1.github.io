@@ -1,0 +1,378 @@
+User
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // 用於格式化日期時間
+import 'gsheet_setup.dart'; // 自定義的 Google Sheets 配置文件
+
+// StatefulWidget 類，代表帶有狀態的小部件
+class Page1 extends StatefulWidget {
+  final String workerNumber; // 員工號碼
+  final String name; // 姓名
+
+  // 構造函數
+  const Page1({Key? key, required this.workerNumber, required this.name}) : super(key: key);
+
+  // 創建狀態對象的方法
+  @override
+  State<Page1> createState() => _Page1State();
+}
+
+// 狀態類，包含頁面 1 的狀態和 UI
+class _Page1State extends State<Page1> {
+  // 定義變數
+  String? selectedOption1; // 選擇的機台
+  String? selectedOption2; // 選擇的品名
+  String? selectedOption3; // 選擇的停車原因
+  String? selectedTime1; // 選擇的停車開始時間
+  String? selectedTime2; // 選擇的停車結束時間
+  String? selectedTime3; // 選擇的報工時間
+  String? selectedTime4; // 選擇的完工時間
+  int? quantity; // 數量
+  TextEditingController timeController1 = TextEditingController(); // 控制停車開始時間的文本編輯器
+  TextEditingController timeController2 = TextEditingController(); // 控制停車結束時間的文本編輯器
+  TextEditingController timeController3 = TextEditingController(); // 控制報工時間的文本編輯器
+  TextEditingController timeController4 = TextEditingController(); // 控制完工時間的文本編輯器
+  TextEditingController parkingReasonController = TextEditingController(); // 控制停車原因的文本編輯器
+
+  bool isSaving = false; // 用於標記是否正在儲存資料
+
+  // 釋放資源的方法
+  @override
+  void dispose() {
+    timeController1.dispose(); // 釋放停車開始時間的文本編輯器
+    timeController2.dispose(); // 釋放停車結束時間的文本編輯器
+    timeController3.dispose(); // 釋放報工時間的文本編輯器
+    timeController4.dispose(); // 釋放完工時間的文本編輯器
+    parkingReasonController.dispose(); // 釋放停車原因的文本編輯器
+    super.dispose(); // 調用父類的 dispose 方法
+  }
+
+  // 重寫 build 方法，構建 UI
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus(); // 點擊其他位置時，收起鍵盤
+        },
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+            // 選擇機台和品名的行
+            Row(
+            children: [
+            Expanded(
+            child: DropdownButtonFormField<String>(
+            // DropdownButtonFormField 用於選擇機台
+            decoration: InputDecoration(
+            labelText: '請選擇機台 *',
+              border: OutlineInputBorder(),
+            ),
+            value: selectedOption1,
+            onChanged: (newValue) {
+              setState(() {
+                selectedOption1 = newValue;
+                if (newValue == 'B01' || newValue == 'B02') {
+                  selectedOption2 = '鋼丸'; // 如果機台是 B01 或 B02，則預設選擇品名為鋼丸
+                } else {
+                  selectedOption2 = null; // 否則清空選擇的品名
+                }
+              });
+            },
+            items: ['A01', 'A02', 'B01', 'B02'].map((option) {
+              return DropdownMenuItem<String>(
+                value: option,
+                child: Text(option),
+              );
+            }).toList(),
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+            child: DropdownButtonFormField<String>(
+              // DropdownButtonFormField 用於選擇品名
+                decoration: InputDecoration(
+                  labelText: '請選擇品名 *',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedOption2,
+                onChanged: (newValue) {
+                  setState(() {
+                    selectedOption2 = newValue;
+                  });
+                },
+                items: selectedOption1 == 'B01' || selectedOption1 == 'B02'
+                ? ['鋼丸'].map((option) {
+                  return DropdownMenuItem<String>(
+                    value: option,
+                    child: Text(option),
+                  );
+                }).toList()
+                    : ['304L圓管', '316L圓管', '304L扁鐵', '316L扁鐵', '304L邊料', '316L邊料'].map((option) {
+        return DropdownMenuItem<String>(
+        value: option,
+        child: Text(option),
+        );
+        }).toList(),
+      ),
+    ),
+    ],
+    ),
+    SizedBox(height: 10),
+    // 停車時間和報工時間的行
+    Row(
+    children: [
+    Expanded(
+    child: TextField(
+    controller: timeController3, // 控制報工時間的文本編輯器
+    readOnly: true,
+    onTap: () {
+    _selectTime(context, 3); // 選擇報工時間
+    },
+    decoration: InputDecoration(
+    labelText: '報工時間 *',
+    border: OutlineInputBorder(),
+    suffixIcon: Icon(Icons.access_time, color: Colors.blue),
+    ),
+    ),
+    ),
+    SizedBox(width: 10),
+    Expanded(
+    child: TextField(
+    controller: timeController4, // 控制完工時間的文本編輯器
+    readOnly: true,
+    onTap: () {
+    _selectTime(context, 4); // 選擇完工時間
+    },
+    decoration: InputDecoration(
+    labelText: '完工時間 *',
+    border: OutlineInputBorder(),
+    suffixIcon: Icon(Icons.access_time, color: Colors.blue),
+    ),
+    ),
+    ),
+    ],
+    ),
+    SizedBox(height: 10),
+    // 數量和停車原因的行
+    Row(
+    children: [
+    Expanded(
+    child: TextField(
+    // TextField 用於輸入數量
+    decoration: InputDecoration(
+    labelText: selectedOption2 == '鋼丸' ? '數量(顆) *' : '數量(公斤) *',
+    border: OutlineInputBorder(),
+    ),
+    keyboardType: TextInputType.number,
+    onChanged: (value) {
+    setState(() {
+    quantity = int.tryParse(value); // 解析並更新數量
+    });
+    },
+    ),
+    ),
+    SizedBox(width: 10),
+    Expanded(
+    child: DropdownButtonFormField<String>(
+    // DropdownButtonFormField 用於選擇停車原因
+    decoration: InputDecoration(
+    labelText: '請選擇停車原因',
+    border: OutlineInputBorder(),
+    ),
+    value: selectedOption3,
+    onChanged: (newValue) {
+    setState(() {
+    selectedOption3 = newValue;
+    });
+    },
+    items: ['機台故障', '機台保養', '人員請假', '天車故障', '待料', '其他'].map((reason) {
+    return DropdownMenuItem<String>(
+    value: reason,
+    child: Text(reason),
+    );
+    }).toList(),
+    ),
+    ),
+    ],
+    ),
+    SizedBox(height: 10),
+    // 停車開始時間和停車結束時間的行
+    Row(
+    children: [
+    Expanded(
+    child: TextField(
+    controller: timeController1, // 控制停車開始時間的文本編輯器
+    onTap: () {
+    _selectTime(context, 1); // 選擇停車開始時間
+    },
+    decoration: InputDecoration(
+    labelText: '停車開始時間',
+    border: OutlineInputBorder(),
+    suffixIcon: Icon(Icons.access_time, color: Colors.blue),
+    ),
+    ),
+    ),
+    SizedBox(width: 10),
+    Expanded(
+    child: TextField(
+    controller: timeController2, // 控制停車結束時間的文本編輯器
+    onTap: () {
+    _selectTime(context, 2); // 選擇停車結束時間
+    },
+    decoration: InputDecoration(
+    labelText: '停車結束時間',
+    border: OutlineInputBorder(),
+    suffixIcon: Icon(Icons.access_time, color: Colors.blue),
+    ),
+    ),
+    ),
+    ],
+    ),
+    SizedBox(height: 10),
+    // 儲存按鈕
+    SizedBox(
+    width: double.infinity,
+    child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+    primary: Color(0xFF456BD9), // 按鈕背景顏色
+    onPrimary: Colors.white, // 文本顏色
+    elevation: 5, // 階梯高度
+    ),
+    onPressed: () async {
+    _saveData(); // 儲存資料的操作
+    },
+    child: isSaving // 根據儲存狀態顯示不同的按鈕文本或等待動畫
+    ? SizedBox(
+    width: 20,
+    height: 20,
+    child: CircularProgressIndicator( // iOS 系統等待動畫
+    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    ),
+    )
+        : const Text('儲存資料'), // 按鈕文本
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
+    ),
+    floatingActionButton: FloatingActionButton(
+    onPressed: () {
+    _saveData(); // 儲存資料的操作
+    },
+    child: Icon(Icons.save), // 保存圖標
+    ),
+    );
+  }
+
+  // 選擇時間的方法
+  void _selectTime(BuildContext context, int fieldNumber) async {
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
+    );
+    if (pickedTime != null) {
+      setState(() {
+        switch (fieldNumber) {
+          case 1:
+            selectedTime1 = _formatTime(pickedTime); // 格式化並保存停車開始時間
+            timeController1.text = selectedTime1!;
+            break;
+          case 2:
+            selectedTime2 = _formatTime(pickedTime); // 格式化並保存停車結束時間
+            timeController2.text = selectedTime2!;
+            break;
+          case 3:
+            selectedTime3 = _formatTime(pickedTime); // 格式化並保存報工時間
+            timeController3.text = selectedTime3!;
+            break;
+          case 4:
+            selectedTime4 = _formatTime(pickedTime); // 格式化並保存完工時間
+            timeController4.text = selectedTime4!;
+            break;
+          default:
+            break;
+        }
+      });
+    }
+  }
+
+  // 格式化時間的方法
+  String _formatTime(TimeOfDay time) {
+    final now = DateTime.now();
+    final dateTime = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    return DateFormat('HH:mm').format(dateTime); // 格式化為 'HH:mm' 的時間字符串
+  }
+
+  // 儲存資料的方法
+  void _saveData() async {
+    // 檢查必填字段是否都填寫
+    if (selectedOption1 != null &&
+        selectedOption2 != null &&
+        selectedTime3 != null &&
+        selectedTime4 != null &&
+        quantity != null) {
+      setState(() {
+        isSaving = true; // 設置為正在儲存資料的狀態
+      });
+      try {
+        final userDetailsList = [
+          {
+            '編號': '=ROW()-1',
+            '工號': widget.workerNumber,
+            '姓名': widget.name,
+            '機台': selectedOption1,
+            '數量': selectedOption2 == '鋼丸' ? '${quantity.toString()} 顆' : '${quantity.toString()} 公斤',
+            '品名': selectedOption2,
+            '停車原因': selectedOption3 ?? '',
+            '停車開始': selectedTime1 ?? '',
+            '停車結束': selectedTime2 ?? '',
+            '報工時間': selectedTime3 ?? '',
+            '完工時間': selectedTime4 ?? '',
+            '停車時間': '=IF(AND(HOUR(INDIRECT("L" & ROW())) >= 12, HOUR(INDIRECT("K" & ROW())) < 12), (INDIRECT("L" & ROW()) - INDIRECT("K" & ROW()) - TIME(1, 0, 0)) * 24, IF(AND(HOUR(INDIRECT("L" & ROW())) >= 12, HOUR(INDIRECT("K" & ROW())) >= 12), (INDIRECT("L" & ROW()) - INDIRECT("K" & ROW())) * 24 - TIME(1, 0, 0), IF(AND(HOUR(INDIRECT("L" & ROW())) < 12, HOUR(INDIRECT("K" & ROW())) < 12), (INDIRECT("L" & ROW()) - INDIRECT("K" & ROW())) * 24, (INDIRECT("L" & ROW()) - INDIRECT("K" & ROW())) * 24 - IF(AND(HOUR(INDIRECT("K" & ROW())) < 13, HOUR(INDIRECT("L" & ROW())) >= 12), 1, 0))))',
+            '生產時間(小時)': '=IF(AND(HOUR(INDIRECT("I" & ROW())) >= 12, HOUR(INDIRECT("H" & ROW())) < 12), (INDIRECT("I" & ROW()) - INDIRECT("H" & ROW()) - TIME(1, 0, 0)) * 24, IF(AND(HOUR(INDIRECT("I" & ROW())) >= 12, HOUR(INDIRECT("H" & ROW())) >= 12), (INDIRECT("I" & ROW()) - INDIRECT("H" & ROW())) * 24 - TIME(1, 0, 0), IF(AND(HOUR(INDIRECT("I" & ROW())) < 12, HOUR(INDIRECT("H" & ROW())) < 12), (INDIRECT("I" & ROW()) - INDIRECT("H" & ROW())) * 24, (INDIRECT("I" & ROW()) - INDIRECT("H" & ROW())) * 24 - IF(AND(HOUR(INDIRECT("H" & ROW())) < 13, HOUR(INDIRECT("I" & ROW())) >= 12), 1, 0))))',
+            '產生日期': DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()), // 格式化當前日期時間
+            '製令單號': '=TEXT(TODAY(), "yyMM") & RIGHT("0000" & (ROW()-1), 4)', // 生成製令單號
+            '日期': DateFormat('yyyy-MM-dd').format(DateTime.now()), // 格式化當前日期
+          },
+        ];
+        await insertDataIntoSheet(userDetailsList); // 插入資料到 Google Sheets
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('資料儲存成功。'), // 顯示資料儲存成功的提示
+          ),
+        );
+        FocusScope.of(context).unfocus(); // 收起鍵盤
+        await Future.delayed(Duration(milliseconds: 300)); // 延遲 300 毫秒
+        Scrollable.ensureVisible(context, alignment: 0.0, duration: Duration(milliseconds: 300)); // 滾動到底部
+        print('資料儲存成功。'); // 在控制台輸出資料儲存成功
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('儲存資料時出現錯誤：$e'), // 顯示儲存資料時出現錯誤的提示
+          ),
+        );
+        print('儲存資料時出現錯誤：$e'); // 在控制台輸出錯誤信息
+      } finally {
+        setState(() {
+          isSaving = false; // 完成儲存操作後，重置狀態為非儲存狀態
+        });
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('請選擇機台、品名、報工時間、完工時間和輸入數量'), // 顯示必填字段未填寫的提示
+        ),
+      );
+    }
+  }
+}
+
+// 插入資料到 Google Sheets 的方法
+Future<void> insertDataIntoSheet(List<Map<String, dynamic>> userDetailsList) async {
+  await sheet.values.map.appendRows(userDetailsList); // 以映射的方式將資料插入到 Google Sheets
+}
